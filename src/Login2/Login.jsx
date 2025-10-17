@@ -5,7 +5,7 @@ import * as Yup from "yup";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaUserCircle, FaLock } from "react-icons/fa";
-import Alert from "../components/alert";
+import Alert from "./alert";
 
 const LoginSchema = Yup.object().shape({
   username: Yup.string().min(2, "Too Short!").max(50, "Too Long!").required("Username is required"),

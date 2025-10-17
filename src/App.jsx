@@ -10,13 +10,17 @@ import Footer from "./components/Footer";
 import PresentationPage from "./components/PresentationPage";
 
 // 🔹 Dashboards
-import UserDashboard from "./login/userdashboard";
-import AdminDashboard from "./login/admindashboard";
+import UserDashboard from "./user/userdashboard";
+import AdminDashboard from "./admin/admindashboard";
 
 // 🔹 Pages
 import MockTest from "./pages/mock-tests";
-import CreateTest from "./pages/create-test";
+import CreateTest from "./create/create-test";
 import Visualizer from "./pages/visualizer";
+
+// 🔹 MCQ / Descriptive / AI Pages
+import CreateMCQ from "./create/mcq";
+// You can similarly import CreateDescriptive and CreateAI later
 
 // 🔹 New Animated Login System
 import FormPage from "./Login2/FormPage";
@@ -34,6 +38,9 @@ function AppWrapper() {
   const hideNavbarRoutes = [
     "/mock-tests",
     "/create-test",
+    "/create/mcq",
+    "/create/descriptive",
+    "/create/ai",
     "/visualizer",
     "/login",
     "/register",
@@ -75,6 +82,11 @@ function AppWrapper() {
         <Route path="/mock-tests" element={<MockTest />} />
         <Route path="/create-test" element={<CreateTest />} />
         <Route path="/visualizer" element={<Visualizer />} />
+
+        {/* 🧑‍💻 MCQ / Descriptive / AI Pages */}
+        <Route path="/mcq" element={<CreateMCQ />} />
+        {/* <Route path="/create/descriptive" element={<CreateDescriptive />} /> */}
+        {/* <Route path="/create/ai" element={<CreateAI />} /> */}
 
         {/* 🧑‍💻 User Dashboard */}
         <Route
