@@ -1,6 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import CreateTest from "../create/create-test";
+import axios from "axios";
+import Assignments from "./assignments";
+
 import {
   FaClipboardList,
   FaTrophy,
@@ -18,6 +20,43 @@ import { motion } from "framer-motion";
 export default function TeacherDashboard() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [profile, setProfile] = useState(null);
+  const [stats, setStats] = useState({
+    testsCreated: 0,
+    assignmentsGiven: 0,
+    submissionsReviewed: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  const token = localStorage.getItem("token");
+
+  // Fetch profile and stats
+  useEffect(() => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    axios
+      .get("http://localhost:5000/api/dashboard", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => {
+        const user = res.data.user;
+        setProfile(user);
+        setStats({
+          testsCreated: user.testsCreated || 0,
+          assignmentsGiven: user.assignmentsGiven || 0,
+          submissionsReviewed: user.submissionsReviewed || 0,
+        });
+      })
+      .catch((err) => {
+        console.error("Failed to fetch profile:", err);
+        setProfile(null);
+      })
+      .finally(() => setLoading(false));
+  }, [token]);
 
   const menuItems = [
     { title: "HOME", icon: <FaHome />, link: "/" },
@@ -78,6 +117,19 @@ export default function TeacherDashboard() {
     visible: { y: 0, opacity: 1 },
   };
 
+  const handleSignOut = () => {
+    localStorage.removeItem("token");
+    window.location.href = "/login";
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-gray-950 text-white">
+        <p className="text-lg">Loading dashboard...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen bg-gray-950 text-white overflow-hidden">
       {/* Sidebar */}
@@ -88,7 +140,6 @@ export default function TeacherDashboard() {
         transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} 
         md:translate-x-0 transition-transform duration-300`}
       >
-        {/* Top Section */}
         <div>
           <div className="flex items-center justify-between px-6 py-5 border-b border-purple-400/30">
             <h1 className="text-2xl font-extrabold tracking-wide text-white">
@@ -108,8 +159,7 @@ export default function TeacherDashboard() {
                 key={idx}
                 whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.1)" }}
                 onClick={() => navigate(item.link)}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg text-left text-white 
-                           font-medium hover:bg-white/10 transition-all duration-200"
+                className="flex items-center gap-3 px-4 py-3 rounded-lg text-left text-white font-medium hover:bg-white/10 transition-all duration-200"
               >
                 <span className="text-xl">{item.icon}</span>
                 {item.title}
@@ -118,7 +168,6 @@ export default function TeacherDashboard() {
           </nav>
         </div>
 
-        {/* Footer */}
         <div className="px-6 py-4 text-gray-300 text-sm border-t border-purple-400/30">
           © {new Date().getFullYear()} EvalEra
         </div>
@@ -126,7 +175,6 @@ export default function TeacherDashboard() {
 
       {/* Main Content */}
       <div className="flex-1 p-6 md:p-10 overflow-y-auto">
-        {/* Mobile Menu Button */}
         <button
           onClick={() => setSidebarOpen(true)}
           className="md:hidden text-purple-400 text-3xl mb-4"
@@ -145,7 +193,7 @@ export default function TeacherDashboard() {
             <FaUserCircle className="text-6xl text-purple-400 drop-shadow-[0_0_30px_rgba(200,0,255,0.8)]" />
             <div>
               <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
-                Welcome, <span className="text-purple-300">Teacher</span> 👋
+                Welcome, <span className="text-purple-300">{profile?.username}</span> 👋
               </h1>
               <p className="text-gray-400 text-sm md:text-base mt-1">
                 Create tests, assign tasks, and track student performance.
@@ -171,17 +219,14 @@ export default function TeacherDashboard() {
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mt-12"
         >
           {[
-            { title: "Tests Created", value: 12, color: "text-cyan-400" },
-            { title: "Assignments Given", value: 28, color: "text-yellow-400" },
-            { title: "Submissions Reviewed", value: 50, color: "text-green-400" },
+            { title: "Tests Created", value: stats.testsCreated, color: "text-cyan-400" },
+            { title: "Assignments Given", value: stats.assignmentsGiven, color: "text-yellow-400" },
+            { title: "Submissions Reviewed", value: stats.submissionsReviewed, color: "text-green-400" },
           ].map((stat, idx) => (
             <motion.div
               key={idx}
               variants={itemVariants}
-              whileHover={{
-                scale: 1.03,
-                boxShadow: "0 0 30px rgba(200,0,255,0.15)",
-              }}
+              whileHover={{ scale: 1.03, boxShadow: "0 0 30px rgba(200,0,255,0.15)" }}
               className="bg-gray-800/70 backdrop-blur-sm rounded-xl p-6 border border-gray-700 shadow-xl transition-all duration-300"
             >
               <h2 className="text-lg font-medium text-gray-300 mb-3 uppercase tracking-wider">

@@ -1,7 +1,8 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from "react-router-dom";
 
-// 🔹 Main Components
+
+// 🔹 Pages & Components
 import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
 import Features from "./components/Features";
@@ -9,20 +10,21 @@ import HowItWorks from "./components/HowItWorks";
 import Footer from "./components/Footer";
 import PresentationPage from "./components/PresentationPage";
 
-// 🔹 Dashboards
+// Dashboards
 import UserDashboard from "./user/userdashboard";
 import AdminDashboard from "./admin/admindashboard";
+import Assignments from "./admin/assignments";
+import CreateAssignment from "./admin/createAssignment";
+import JoinTest from "./user/jointest";
 
-// 🔹 Pages
+// Other Pages
 import MockTest from "./pages/mock-tests";
 import CreateTest from "./create/create-test";
 import Visualizer from "./pages/visualizer";
-
-// 🔹 MCQ / Descriptive / AI Pages
 import CreateMCQ from "./create/mcq";
-// You can similarly import CreateDescriptive and CreateAI later
+import AITest from "./create/ai";
 
-// 🔹 New Animated Login System
+// Auth
 import FormPage from "./Login2/FormPage";
 
 // 🔒 Private Route
@@ -34,7 +36,6 @@ const PrivateRoute = ({ children }) => {
 function AppWrapper() {
   const location = useLocation();
 
-  // Pages where Navbar should NOT appear
   const hideNavbarRoutes = [
     "/mock-tests",
     "/create-test",
@@ -57,7 +58,7 @@ function AppWrapper() {
       {showNavbar && <Navbar />}
 
       <Routes>
-        {/* 🏠 Home Page */}
+        {/* Home */}
         <Route
           path="/"
           element={
@@ -71,44 +72,30 @@ function AppWrapper() {
           }
         />
 
-        {/* 🔹 Auth Routes */}
+        {/* Auth */}
         <Route path="/auth/*" element={<FormPage />} />
-
-        {/* Shortcuts for direct access */}
         <Route path="/login" element={<Navigate to="/auth/login" replace />} />
         <Route path="/register" element={<Navigate to="/auth/register" replace />} />
 
-        {/* 📘 Test Pages */}
+        {/* Test Pages */}
         <Route path="/mock-tests" element={<MockTest />} />
         <Route path="/create-test" element={<CreateTest />} />
         <Route path="/visualizer" element={<Visualizer />} />
+        <Route path="/jointest" element={<JoinTest />} /> 
 
-        {/* 🧑‍💻 MCQ / Descriptive / AI Pages */}
+        {/* MCQ / AI */}
         <Route path="/mcq" element={<CreateMCQ />} />
-        {/* <Route path="/create/descriptive" element={<CreateDescriptive />} /> */}
-        {/* <Route path="/create/ai" element={<CreateAI />} /> */}
+        <Route path="/ai" element={<AITest />} />
 
-        {/* 🧑‍💻 User Dashboard */}
-        <Route
-          path="/userdashboard"
-          element={
-            <PrivateRoute>
-              <UserDashboard />
-            </PrivateRoute>
-          }
-        />
+        {/* Dashboards */}
+        <Route path="/userdashboard" element={<PrivateRoute><UserDashboard /></PrivateRoute>} />
+        <Route path="/admindashboard" element={<PrivateRoute><AdminDashboard /></PrivateRoute>} />
 
-        {/* 👨‍💼 Admin Dashboard */}
-        <Route
-          path="/admindashboard"
-          element={
-            <PrivateRoute>
-              <AdminDashboard />
-            </PrivateRoute>
-          }
-        />
+        {/* Assignments */}
+        <Route path="/assignments" element={<PrivateRoute><Assignments /></PrivateRoute>} />
+        <Route path="/create-assignment" element={<PrivateRoute><CreateAssignment /></PrivateRoute>} />
 
-        {/* ⚠️ 404 Fallback */}
+        {/* 404 */}
         <Route
           path="*"
           element={
@@ -122,12 +109,10 @@ function AppWrapper() {
   );
 }
 
-function App() {
+export default function App() {
   return (
     <Router>
       <AppWrapper />
     </Router>
   );
 }
-
-export default App;

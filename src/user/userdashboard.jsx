@@ -37,7 +37,7 @@ export default function UserDashboard() {
     },
     {
       title: "Concept Visualizer",
-      desc: "Understand complex concepts visually with AI-powered visual explanations.",
+      desc: "Understand complex concepts visually with AI-powered explanations.",
       icon: <FaBrain className="text-white text-4xl drop-shadow-md" />,
       link: "/visualizer",
     },
@@ -80,53 +80,51 @@ export default function UserDashboard() {
   return (
     <div className="flex min-h-screen bg-gray-950 text-white overflow-hidden">
       {/* Sidebar */}
-<div
-  className={`fixed md:static top-0 left-0 h-screen md:h-auto md:min-h-screen w-64 
-    bg-gradient-to-b from-cyan-600 to-blue-800 
-    shadow-[0_0_25px_rgba(0,200,255,0.3)] z-50 flex flex-col justify-between 
-    transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} 
-    md:translate-x-0 transition-transform duration-300`}
->
-  {/* Top Section */}
-  <div>
-    <div className="flex items-center justify-between px-6 py-5 border-b border-cyan-400/30">
-      <h1 className="text-2xl font-extrabold tracking-wide text-white">
-        Eval<span className="text-cyan-300">Era</span>
-      </h1>
-      <button
-        className="md:hidden text-white text-2xl"
-        onClick={() => setSidebarOpen(false)}
+      <div
+        className={`fixed md:static top-0 left-0 h-screen md:h-auto md:min-h-screen w-64
+        bg-gradient-to-b from-cyan-700 to-blue-800 
+        shadow-[0_0_25px_rgba(0,200,255,0.3)] z-50 flex flex-col justify-between
+        transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} 
+        md:translate-x-0 transition-transform duration-300`}
       >
-        <FaTimes />
-      </button>
-    </div>
+        <div>
+          <div className="flex items-center justify-between px-6 py-5 border-b border-cyan-400/30">
+            <h1 className="text-2xl font-extrabold tracking-wide text-white">
+              Eval<span className="text-cyan-300">Era</span>
+            </h1>
+            <button
+              className="md:hidden text-white text-2xl"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <FaTimes />
+            </button>
+          </div>
 
-    <nav className="flex flex-col gap-2 mt-6 px-4">
-      {menuItems.map((item, idx) => (
-        <motion.button
-          key={idx}
-          whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.1)" }}
-          onClick={() => navigate(item.link)}
-          className="flex items-center gap-3 px-4 py-3 rounded-lg text-left text-white 
-                     font-medium hover:bg-white/10 transition-all duration-200"
-        >
-          <span className="text-xl">{item.icon}</span>
-          {item.title}
-        </motion.button>
-      ))}
-    </nav>
-  </div>
+          <nav className="flex flex-col gap-2 mt-6 px-4">
+            {menuItems.map((item, idx) => (
+              <motion.button
+                key={idx}
+                whileHover={{
+                  scale: 1.05,
+                  backgroundColor: "rgba(255,255,255,0.1)",
+                }}
+                onClick={() => navigate(item.link)}
+                className="flex items-center gap-3 px-4 py-3 rounded-lg text-left text-white font-medium hover:bg-white/10 transition-all duration-200"
+              >
+                <span className="text-xl">{item.icon}</span>
+                {item.title}
+              </motion.button>
+            ))}
+          </nav>
+        </div>
 
-  {/* Bottom Footer */}
-  <div className="px-6 py-4 text-gray-300 text-sm border-t border-cyan-400/30">
-    © {new Date().getFullYear()} EvalEra
-  </div>
-</div>
-
+        <div className="px-6 py-4 text-gray-300 text-sm border-t border-cyan-400/30">
+          © {new Date().getFullYear()} EvalEra
+        </div>
+      </div>
 
       {/* Main Content */}
       <div className="flex-1 p-6 md:p-10 overflow-y-auto">
-        {/* Mobile Menu Button */}
         <button
           onClick={() => setSidebarOpen(true)}
           className="md:hidden text-cyan-400 text-3xl mb-4"
@@ -152,51 +150,94 @@ export default function UserDashboard() {
               </p>
             </div>
           </div>
-          <motion.button
-            onClick={() => navigate("/profile")}
-            whileHover={{ scale: 1.05, boxShadow: "0 0 25px rgba(0, 255, 255, 0.7)" }}
-            whileTap={{ scale: 0.95 }}
-            className="mt-4 md:mt-0 px-8 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-lg font-bold
-                     text-lg shadow-xl shadow-cyan-500/30 transition-all duration-300 transform hover:brightness-110"
-          >
-            View Profile
-          </motion.button>
+
+          <div className="flex flex-col items-center md:items-end gap-3">
+            <motion.button
+              onClick={() => navigate("/profile")}
+              whileHover={{
+                scale: 1.05,
+                boxShadow: "0 0 25px rgba(0, 255, 255, 0.7)",
+              }}
+              whileTap={{ scale: 0.95 }}
+              className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-lg font-bold
+                       text-lg shadow-xl shadow-cyan-500/30 transition-all duration-300 transform hover:brightness-110"
+            >
+              View Profile
+            </motion.button>
+
+            
+          </div>
         </motion.header>
 
-        {/* Stats Section */}
-        <motion.section
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mt-12"
-        >
-          {[
-            { title: "Tests Attempted", value: 18, color: "text-cyan-400" },
-            { title: "Average Score", value: "82%", color: "text-yellow-400" },
-          ].map((stat, idx) => (
-            <motion.div
-              key={idx}
-              variants={itemVariants}
-              whileHover={{
-                scale: 1.03,
-                boxShadow: "0 0 30px rgba(0, 255, 255, 0.15)",
-              }}
-              className="bg-gray-800/70 backdrop-blur-sm rounded-xl p-6 border border-gray-700 shadow-xl transition-all duration-300"
-            >
-              <h2 className="text-lg font-medium text-gray-300 mb-3 uppercase tracking-wider">
-                {stat.title}
-              </h2>
-              <p className={`text-5xl md:text-6xl font-extrabold ${stat.color} drop-shadow-md`}>
-                {stat.value}
-              </p>
-            </motion.div>
-          ))}
-        </motion.section>
+{/* Stats Section - Professional, 3-Box Side-by-Side Layout */}
+<motion.section
+  variants={containerVariants}
+  initial="hidden"
+  animate="visible"
+  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-7 my-16 max-w-7xl mx-auto"
+>
+  {/* Stat Cards */}
+  {[
+    { title: "Tests Attempted", value: 18, color: "text-cyan-400", subtext: "Total Count" },
+    { title: "Average Score", value: "82%", color: "text-yellow-400", subtext: "Across All Subjects" },
+  ].map((stat, idx) => (
+    <motion.div
+      key={idx}
+      variants={itemVariants}
+      whileHover={{
+        scale: 1.02,
+        boxShadow: "0 15px 30px rgba(0, 0, 0, 0.4)",
+        y: -3,
+      }}
+      className="relative bg-gray-900/70 backdrop-blur-sm rounded-xl p-7 border border-gray-700/60 shadow-xl transition-all duration-300 transform-gpu overflow-hidden"
+    >
+      <h2 className="text-sm font-semibold text-gray-400 mb-2 uppercase tracking-widest border-b border-gray-700/50 pb-2">
+        {stat.title}
+      </h2>
+      <p
+        className={`text-5xl md:text-6xl font-extrabold ${stat.color} leading-snug pt-2`}
+        style={{ textShadow: "0 4px 6px rgba(0,0,0,0.3)" }}
+      >
+        {stat.value}
+      </p>
+      <p className="mt-2 text-sm text-gray-500 italic">{stat.subtext}</p>
+    </motion.div>
+  ))}
+
+  {/* Call-to-Action Box (Full Teal Box) */}
+  <motion.div
+    variants={itemVariants}
+    whileHover={{
+      scale: 1.02,
+      boxShadow: "0 15px 30px rgba(0, 0, 0, 0.4)",
+      y: -3,
+    }}
+    className="relative bg-teal-600 rounded-xl p-7 shadow-xl transition-all duration-300 transform-gpu
+               flex flex-col items-center justify-center text-center"
+  >
+    <h2 className="text-2xl font-bold text-white mb-4 uppercase tracking-wider">
+      Ready to Test Yourself?
+    </h2>
+    
+    <motion.button
+      onClick={() => navigate("/jointest")}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.98 }}
+      className="w-full max-w-xs px-8 py-3 bg-white/90 text-teal-700 font-bold rounded-lg
+                 shadow-md shadow-black/20 uppercase tracking-wider transition-all duration-300
+                 hover:bg-white hover:text-teal-800 focus:outline-none focus:ring-4 focus:ring-white/40"
+    >
+      JOIN A TEST
+    </motion.button>
+  </motion.div>
+</motion.section>
+
+
 
         {/* Features Section */}
         <section className="mt-16">
           <h2 className="text-3xl font-bold text-white mb-8 border-b-2 border-cyan-500/50 pb-2 inline-block">
-            Key Features
+            Student Tools
           </h2>
           <motion.div
             variants={containerVariants}
@@ -208,7 +249,10 @@ export default function UserDashboard() {
               <motion.div
                 key={idx}
                 variants={itemVariants}
-                whileHover={{ scale: 1.05, boxShadow: "0 0 35px rgba(0, 200, 255, 0.8)" }}
+                whileHover={{
+                  scale: 1.05,
+                  boxShadow: "0 0 35px rgba(0, 200, 255, 0.8)",
+                }}
                 whileTap={{ scale: 0.98 }}
                 className="bg-gradient-to-br from-cyan-600 to-blue-700 rounded-2xl p-6 cursor-pointer
                            shadow-lg hover:shadow-[0_0_45px_rgba(0,200,255,0.9)] transition-all duration-300

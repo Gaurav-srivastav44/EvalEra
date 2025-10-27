@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
@@ -8,39 +8,39 @@ import { FaUserCircle, FaLock } from "react-icons/fa";
 import Alert from "./alert";
 
 const LoginSchema = Yup.object().shape({
-  username: Yup.string().min(2, "Too Short!").max(50, "Too Long!").required("Username is required"),
+  email: Yup.string().email("Invalid email").required("Email is required"),
   password: Yup.string().min(6, "Too Short!").required("Password is required"),
   role: Yup.string().oneOf(["user", "admin"]).required("Role is required"),
 });
 
 export default function Login({ isLogin = true }) {
   const navigate = useNavigate();
-  const initialValues = { username: "", password: "", role: "user" };
-  const [alert, setAlert] = React.useState(null);
+  const initialValues = { email: "", password: "", role: "user" };
+  const [alert, setAlert] = useState(null);
 
   const handleSubmit = async (values, { setSubmitting, setErrors }) => {
     try {
-      const response = await axios.post("http://localhost:5000/api/login", {
-        email: values.username,
+      const response = await axios.post("http://localhost:5000/api/auth/login", {
+        email: values.email,
         password: values.password,
         role: values.role,
       });
 
-      const { token } = response.data;
+      const { token, user } = response.data;
       localStorage.setItem("token", token);
-      localStorage.setItem("role", values.role);
-      alert("Login successful 🎉");
+      localStorage.setItem("role", user.role);
+      localStorage.setItem("user", JSON.stringify(user));
+
+      setAlert({ type: "success", message: "Login successful 🎉" });
+      setTimeout(() => setAlert(null), 3000);
 
       // Redirect based on role
-      if (values.role === "admin") navigate("/admindashboard");
+      if (user.role === "admin") navigate("/admindashboard");
       else navigate("/userdashboard");
     } catch (error) {
-      if (error.response && error.response.data.error) {
-        setErrors({ password: error.response.data.error });
-      } else {
-        setErrors({ password: "Login failed, try again." });
-      }
-      setAlert({ type: "error", message: "Login failed, try again." });
+      const errMsg = error.response?.data?.error || "Login failed, try again.";
+      setErrors({ password: errMsg });
+      setAlert({ type: "error", message: errMsg });
       setTimeout(() => setAlert(null), 5000);
     }
     setSubmitting(false);
@@ -49,17 +49,13 @@ export default function Login({ isLogin = true }) {
   return (
     <div className="flex justify-center items-center min-h-screen relative px-4">
       <div className="absolute inset-0 bg-black backdrop-blur-sm" />
-
       <div className="relative w-full max-w-md bg-black rounded-2xl shadow-xl backdrop-blur-lg overflow-hidden p-8">
-        {/* Alert */}
         {alert && <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />}
 
-        {/* Header Icon */}
+        {/* Header */}
         <div className="flex justify-center mb-6">
           <FaUserCircle className="text-white text-6xl sm:text-7xl" />
         </div>
-
-        {/* Header Title */}
         <div className="text-center mb-6">
           <p className="text-white/80 text-sm sm:text-base mt-2">
             {isLogin
@@ -68,7 +64,7 @@ export default function Login({ isLogin = true }) {
           </p>
         </div>
 
-        {/* Formik Form */}
+        {/* Form */}
         <Formik initialValues={initialValues} validationSchema={LoginSchema} onSubmit={handleSubmit}>
           {({ isSubmitting, values, handleChange }) => (
             <Form className="w-full space-y-4">
@@ -97,26 +93,24 @@ export default function Login({ isLogin = true }) {
                     </motion.label>
                   ))}
                 </AnimatePresence>
-
-                {/* Highlight background */}
                 <motion.div
                   layout
-                  className="absolute top-0 left-0 h-full bg-white/20 rounded-full"
+                  className="absolute top-0 left-0 h-full bg-cyan-600/30 rounded-full"
                   style={{ width: "50%", left: values.role === "user" ? "0%" : "50%" }}
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 />
               </div>
 
-              {/* Username */}
+              {/* Email */}
               <div className="relative">
                 <FaUserCircle className="absolute left-3 top-3 text-white" />
                 <Field
-                  type="text"
-                  name="username"
-                  placeholder="Username"
+                  type="email"
+                  name="email"
+                  placeholder="Email"
                   className="w-full pl-10 pr-3 py-2 rounded-md border border-white bg-transparent text-white placeholder-white focus:outline-none"
                 />
-                <ErrorMessage name="username" component="div" className="text-red-400 text-sm mt-1" />
+                <ErrorMessage name="email" component="div" className="text-red-400 text-sm mt-1" />
               </div>
 
               {/* Password */}
@@ -135,21 +129,20 @@ export default function Login({ isLogin = true }) {
               <motion.button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-3 rounded-full bg-gradient-to-r from-[#9e1644] via-[#c6335d] to-[#9e1644] text-white font-semibold shadow-[0_0_15px_rgba(255,0,120,0.5)] hover:scale-105 transition-transform duration-300"
+                className="w-full py-3 rounded-full bg-gradient-to-r from-cyan-500 via-blue-500 to-cyan-500 text-white font-semibold shadow-[0_0_15px_rgba(0,255,255,0.5)] hover:scale-105 transition-transform duration-300"
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
               >
-                {isSubmitting ? "Signing In..." : isLogin ? "Sign In" : "Register"}
+                {isSubmitting ? "Signing In..." : "Sign In"}
               </motion.button>
             </Form>
           )}
         </Formik>
 
-        {/* Switch Links */}
         <p className="text-white/70 text-sm mt-5 text-center">
-          {isLogin ? "Don’t have an account?" : "Already have an account?"}{" "}
-          <Link to={isLogin ? "/register" : "/login"} className="text-pink-400 font-bold hover:underline">
-            {isLogin ? "Register" : "Sign In"}
+          Don’t have an account?{" "}
+          <Link to="/register" className="text-cyan-400 font-bold hover:underline">
+            Register
           </Link>
         </p>
       </div>
