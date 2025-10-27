@@ -1,11 +1,16 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
-import mongoose from "mongoose";
+import path from "path";
 
 // Routes
-import authRoutes from "./routes/auth.js"; // your existing signup/login
-import aiRoutes from "./routes/ai.js";     // AI question generation
+import authRoutes from "./routes/auth.js";
+import aiRoutes from "./routes/ai.js";
+import dashboardRoutes from "./routes/dashboard.js";
+import assignmentRoutes from "./routes/assignments.js"; // ← new
+
+// DB Connection
+import connectDB from "./config/connectDB.js";
 
 dotenv.config();
 const app = express();
@@ -14,21 +19,23 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Serve uploaded files
+app.use("/uploads", express.static(path.join(path.resolve(), "uploads")));
+
 // Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => console.log("MongoDB connected"))
-.catch((err) => console.error("MongoDB connection error:", err));
+connectDB();
 
 // Routes
-app.use("/api/auth", authRoutes); // Signup/Login
-app.use("/api", aiRoutes);        // AI question generation
+app.use("/api/auth", authRoutes);
+app.use("/api", aiRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/assignments", assignmentRoutes); // ← new route
 
 // Default route
 app.get("/", (req, res) => {
-  res.send("Backend is running. Use /api/auth for login/signup and /api/generate-questions for AI test.");
+  res.send(
+    "Backend is running. Use /api/auth for login/signup, /api/assignments for assignments, /api/generate-questions for AI test."
+  );
 });
 
 // Start server
