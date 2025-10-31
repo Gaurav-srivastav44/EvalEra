@@ -3,7 +3,6 @@ import fetch from "node-fetch";
 
 const router = express.Router();
 
-// POST /api/generate-questions
 router.post("/generate-questions", async (req, res) => {
   const { subject, difficulty, numberOfQuestions } = req.body;
 
@@ -21,35 +20,31 @@ router.post("/generate-questions", async (req, res) => {
       {
         role: "system",
         content:
-          "You are an expert exam creator. Generate multiple-choice questions in JSON format.",
+          "You are an AI that generates exam questions ONLY in pure JSON format, no explanations or text outside JSON.",
       },
       {
         role: "user",
-        content: `
-Generate ${n} ${difficulty} multiple-choice questions on ${subject}.
-Each question should be in this format:
+        content: `Generate ${n} ${difficulty} multiple-choice questions on ${subject}.
+Each object should follow exactly this format:
 {
   "question": "Question text",
   "options": ["Option A", "Option B", "Option C", "Option D"],
-  "answer": "A" // correct option (A/B/C/D)
+  "answer": "A"
 }
-Return the entire output as a valid JSON array.
-        `,
+Return a valid JSON array ONLY. Do not include extra text, markdown, or comments.`,
       },
     ];
 
-    // ✅ Use OpenRouter API instead of OpenAI
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        // Optional but recommended for compliance
-        "HTTP-Referer": "http://localhost:5000", // your backend or frontend URL
-        "X-Title": "EvalEra AI Question Generator", // your app name
+        "HTTP-Referer": "http://localhost:5000",
+        "X-Title": "EvalEra AI Question Generator",
       },
       body: JSON.stringify({
-        model: "gpt-3.5-turbo", // or another model from OpenRouter (like "mistralai/mixtral-8x7b")
+        model: "openai/gpt-3.5-turbo",
         messages,
         temperature: 0.7,
         max_tokens: 1000,
@@ -57,25 +52,32 @@ Return the entire output as a valid JSON array.
     });
 
     const data = await response.json();
-    const text = data.choices?.[0]?.message?.content?.trim();
+    let text = data.choices?.[0]?.message?.content?.trim();
 
     if (!text) {
-      console.error("Invalid AI response:", data);
-      return res.status(500).json({ error: "Failed to generate questions" });
+      console.error("❌ Invalid AI response:", data);
+      return res.status(500).json({ error: "No response from AI" });
     }
 
-    // Safely parse JSON output
+    // 🧹 Clean unwanted wrappers like ```json or explanations
+    text = text.replace(/```json|```/g, "").trim();
+
+    // Try parsing JSON safely
     let questions;
     try {
       questions = JSON.parse(text);
     } catch (err) {
-      console.error("JSON parse error:", err, "\nRaw text:", text);
-      return res.status(500).json({ error: "AI returned invalid JSON" });
+      console.error("❌ JSON parse error:", err);
+      console.error("Raw text:", text);
+      return res.status(500).json({
+        error: "AI returned invalid JSON",
+        raw: text, // helpful for debugging in Postman
+      });
     }
 
     res.json({ questions });
   } catch (err) {
-    console.error(err);
+    console.error("🔥 AI generation error:", err);
     res.status(500).json({ error: "Failed to generate questions" });
   }
 });
