@@ -28,21 +28,16 @@ export default function JoinTest() {
     setError("");
 
     try {
-      const res = await axios.post(
-        "http://localhost:5000/api/join-test",
-        { code: testCode },
+      const res = await axios.get(
+        `http://localhost:5000/api/tests/public/by-code/${encodeURIComponent(testCode)}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      const { success, testId, message } = res.data;
-      if (success && testId) {
-        navigate(`/assignment/${testId}`);
-      } else {
-        setError(message || "Invalid or expired test code.");
-      }
+      // You can route to a dedicated test-taking page; for now, show details
+      navigate(`/take-test/${res.data._id}`, { state: { test: res.data } });
     } catch (err) {
       setError(
-        err.response?.data?.message || "Connection error. Please try again."
+        err.response?.data?.error || "Connection error. Please try again."
       );
     } finally {
       setLoading(false);

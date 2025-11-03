@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import {
   FaUserCircle,
@@ -17,6 +18,35 @@ import { motion } from "framer-motion";
 export default function UserDashboard() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const token = localStorage.getItem("token");
+
+  useEffect(() => {
+    const fetchResults = async () => {
+      if (!token) { setLoading(false); return; }
+      try {
+        const res = await axios.get("http://localhost:5000/api/tests/results/mine", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setResults(res.data || []);
+      } catch (err) {
+        setError(err.response?.data?.error || "Failed to load results");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchResults();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const testsAttempted = results.length;
+  const averageScore = useMemo(() => {
+    if (!results.length) return 0;
+    const sum = results.reduce((acc, r) => acc + (r.score / (r.total || 1)), 0);
+    return Math.round((sum / results.length) * 100);
+  }, [results]);
 
   const menuItems = [
     { title: "HOME", icon: <FaHome />, link: "/" },
@@ -178,8 +208,8 @@ export default function UserDashboard() {
 >
   {/* Stat Cards */}
   {[
-    { title: "Tests Attempted", value: 18, color: "text-cyan-400", subtext: "Total Count" },
-    { title: "Average Score", value: "82%", color: "text-yellow-400", subtext: "Across All Subjects" },
+    { title: "Tests Attempted", value: testsAttempted, color: "text-cyan-400", subtext: "Total Count" },
+    { title: "Average Score", value: `${averageScore}%`, color: "text-yellow-400", subtext: "Across All Subjects" },
   ].map((stat, idx) => (
     <motion.div
       key={idx}
@@ -269,6 +299,43 @@ export default function UserDashboard() {
               </motion.div>
             ))}
           </motion.div>
+        </section>
+
+        {/* Recent Results */}
+        <section className="mt-16">
+          <h2 className="text-3xl font-bold text-white mb-4 border-b-2 border-cyan-500/50 pb-2 inline-block">
+            Recent Results
+          </h2>
+          {loading ? (
+            <p className="text-gray-400">Loading...</p>
+          ) : error ? (
+            <p className="text-red-400">{error}</p>
+          ) : results.length === 0 ? (
+            <p className="text-gray-400">No results yet. Join a test to get started.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full bg-gray-900/60 border border-gray-700 rounded-xl">
+                <thead>
+                  <tr className="text-left text-gray-300">
+                    <th className="px-4 py-3">Test</th>
+                    <th className="px-4 py-3">Subject</th>
+                    <th className="px-4 py-3">Score</th>
+                    <th className="px-4 py-3">Submitted</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {results.slice(0, 10).map((r) => (
+                    <tr key={r._id} className="border-t border-gray-800">
+                      <td className="px-4 py-3">{r.test?.name || r.testId}</td>
+                      <td className="px-4 py-3">{r.test?.subject || "-"}</td>
+                      <td className="px-4 py-3">{r.score} / {r.total} ({Math.round((r.score/(r.total||1))*100)}%)</td>
+                      <td className="px-4 py-3">{new Date(r.submittedAt).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
 
         {/* Footer */}

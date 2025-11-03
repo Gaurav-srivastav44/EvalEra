@@ -26,6 +26,8 @@ export default function TeacherDashboard() {
     assignmentsGiven: 0,
     submissionsReviewed: 0,
   });
+  const [myTests, setMyTests] = useState([]);
+  const [myAssignments, setMyAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const token = localStorage.getItem("token");
@@ -45,10 +47,11 @@ export default function TeacherDashboard() {
       .then((res) => {
         const user = res.data.user;
         setProfile(user);
+        const s = res.data.stats || {};
         setStats({
-          testsCreated: user.testsCreated || 0,
-          assignmentsGiven: user.assignmentsGiven || 0,
-          submissionsReviewed: user.submissionsReviewed || 0,
+          testsCreated: s.testsCreated || 0,
+          assignmentsGiven: s.assignmentsGiven || 0,
+          submissionsReviewed: s.submissionsReviewed || 0,
         });
       })
       .catch((err) => {
@@ -56,6 +59,21 @@ export default function TeacherDashboard() {
         setProfile(null);
       })
       .finally(() => setLoading(false));
+
+    // Fetch my tests list for preview
+    axios
+      .get("http://localhost:5000/api/tests/mine", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => setMyTests(res.data || []))
+      .catch(() => setMyTests([]));
+
+    axios
+      .get("http://localhost:5000/api/assignments/mine", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => setMyAssignments(res.data || []))
+      .catch(() => setMyAssignments([]));
   }, [token]);
 
   const menuItems = [
@@ -269,6 +287,75 @@ export default function TeacherDashboard() {
               </motion.div>
             ))}
           </motion.div>
+        </section>
+
+        {/* My Tests Preview */}
+        <section className="mt-16">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-3xl font-bold text-white">My Created Tests</h2>
+            <button
+              onClick={() => navigate("/admin/tests")}
+              className="px-4 py-2 bg-purple-600 rounded-lg hover:bg-purple-500"
+            >
+              View All
+            </button>
+          </div>
+          {myTests.length === 0 ? (
+            <p className="text-gray-400">No tests yet. Create one to get started.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {myTests.slice(0, 4).map((t) => (
+                <div key={t._id} className="bg-gray-800 rounded-xl p-5 border border-gray-700">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xl font-semibold">{t.name}</h3>
+                    <span className="text-sm px-2 py-1 rounded bg-gray-700">{t.type}</span>
+                  </div>
+                  <p className="text-gray-300 mt-1">{t.subject} • {t.difficulty}</p>
+                  <p className="text-gray-400 mt-1">Questions: {t.numberOfQuestions}</p>
+                  <div className="mt-2 text-sm text-gray-400">Code: <span className="font-mono">{t.code}</span></div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* My Assignments Preview */}
+        <section className="mt-16">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-3xl font-bold text-white">My Assignments</h2>
+            <button
+              onClick={() => navigate("/assignments")}
+              className="px-4 py-2 bg-purple-600 rounded-lg hover:bg-purple-500"
+            >
+              Manage
+            </button>
+          </div>
+          {myAssignments.length === 0 ? (
+            <p className="text-gray-400">No assignments yet. Create one to get started.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {myAssignments.slice(0, 4).map((a) => (
+                <div key={a._id} className="bg-gray-800 rounded-xl p-5 border border-gray-700">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xl font-semibold">{a.title}</h3>
+                    <span className={`text-sm px-2 py-1 rounded ${a.status === "Active" ? "bg-green-600" : "bg-gray-600"}`}>
+                      {a.status}
+                    </span>
+                  </div>
+                  <p className="text-gray-300 mt-1">Due: {new Date(a.date).toLocaleDateString()}</p>
+                  {a.file && (
+                    <a
+                      className="text-sm text-purple-300 hover:text-purple-200 underline"
+                      href={`http://localhost:5000/uploads/${a.file}`}
+                      target="_blank" rel="noreferrer"
+                    >
+                      View File
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Footer */}

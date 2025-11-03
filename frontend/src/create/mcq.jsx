@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import axios from "axios";
 import { motion } from "framer-motion";
 
 export default function CreateMCQ() {
@@ -25,11 +26,32 @@ export default function CreateMCQ() {
     setQuestions([...questions, { question: "", options: ["", "", "", ""], correctAnswer: "" }]);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log({ testData, questions });
-    alert("MCQ Test Created! Check console for data.");
-    // Here you can navigate or send data to backend
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("You must be logged in as admin.");
+      navigate("/login");
+      return;
+    }
+    try {
+      const payload = {
+        name: testData?.name,
+        subject: testData?.subject,
+        difficulty: testData?.difficulty,
+        numberOfQuestions: Number(testData?.questions || questions.length),
+        type: "mcq",
+        questions: questions.map(q => ({ question: q.question, options: q.options, correctAnswer: q.correctAnswer })),
+      };
+      const res = await axios.post("http://localhost:5000/api/tests", payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      alert(`Test created. Code: ${res.data?.code}`);
+      navigate("/admin/tests");
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.error || "Failed to create test");
+    }
   };
 
   const fieldVariants = {
