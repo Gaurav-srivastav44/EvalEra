@@ -1,6 +1,8 @@
 import express from "express";
 import authMiddleware from "../middleware/authMiddleware.js";
 import User from "../models/User.js";
+import Test from "../models/Test.js";
+import Assignment from "../models/Assignment.js";
 
 const router = express.Router();
 
@@ -10,7 +12,17 @@ router.get("/", authMiddleware, async (req, res) => {
     const user = await User.findById(req.user._id).select("-password");
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    res.json({ user });
+    let stats = { testsCreated: 0, assignmentsGiven: 0, submissionsReviewed: 0 };
+    if (user.role === "admin") {
+      const [testsCreated, assignmentsGiven] = await Promise.all([
+        Test.countDocuments({ createdBy: user._id }),
+        Assignment.countDocuments({ createdBy: user._id }),
+      ]);
+      stats.testsCreated = testsCreated;
+      stats.assignmentsGiven = assignmentsGiven;
+    }
+
+    res.json({ user, stats });
   } catch (err) {
     console.error("Dashboard error:", err);
     res.status(500).json({ error: "Server error" });

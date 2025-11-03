@@ -8,6 +8,11 @@ import authRoutes from "./routes/auth.js";
 import aiRoutes from "./routes/ai.js";
 import dashboardRoutes from "./routes/dashboard.js";
 import assignmentRoutes from "./routes/assignments.js"; // ← new
+import testRoutes from "./routes/tests.js";
+import leaderboardRoutes from "./routes/leaderboard.js";
+import analyticsRoutes from "./routes/analytics.js";
+import challengesRoutes from "./routes/challenges.js";
+import problemsRoutes from "./routes/problems.js";
 
 // DB Connection
 import connectDB from "./config/connectDB.js";
@@ -29,11 +34,16 @@ app.use("/api/auth", authRoutes);
 app.use("/api", aiRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/assignments", assignmentRoutes); // ← new route
+app.use("/api/tests", testRoutes);
+app.use("/api/leaderboard", leaderboardRoutes);
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/challenges", challengesRoutes);
+app.use("/api/problems", problemsRoutes);
 
 // Default route
 app.get("/", (req, res) => {
   res.send(
-    "Backend is running. Use /api/auth for login/signup, /api/assignments for assignments, /api/generate-questions for AI test."
+    "Backend is running. Use /api/auth for login/signup, /api/assignments for assignments, /api/tests for tests, /api/generate-questions for AI test."
   );
 });
 
