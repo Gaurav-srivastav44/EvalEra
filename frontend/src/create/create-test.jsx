@@ -29,6 +29,7 @@ export default function CreateTest() {
     if (form.type === "mcq") navigate("/mcq", { state: form });
     else if (form.type === "descriptive") navigate("/descriptive", { state: form });
     else if (form.type === "ai") navigate("/ai", { state: form });
+    else if (form.type === "coding") navigate("/create/coding", { state: form });
   };
 
   const fieldVariants = {
@@ -88,6 +89,7 @@ export default function CreateTest() {
                 { label: "MCQ", value: "mcq" },
                 { label: "Descriptive", value: "descriptive" },
                 { label: "AI-Based", value: "ai" },
+                { label: "Coding (LeetCode-style)", value: "coding" },
               ],
             },
           ].map((field, i) => (

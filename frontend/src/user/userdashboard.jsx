@@ -194,8 +194,7 @@ export default function UserDashboard() {
             >
               View Profile
             </motion.button>
-
-            
+           
           </div>
         </motion.header>
 

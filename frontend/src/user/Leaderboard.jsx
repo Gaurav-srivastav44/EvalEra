@@ -11,7 +11,7 @@ export default function Leaderboard() {
   useEffect(() => {
     const run = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/api/leaderboard", {
+        const res = await axios.get("http://localhost:5000/api/leaderboard/xp", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setRows(res.data || []);
@@ -42,8 +42,8 @@ export default function Leaderboard() {
               <tr className="bg-yellow-100">
                 <th className="p-3 text-lg">Rank</th>
                 <th className="p-3 text-lg">Name</th>
-                <th className="p-3 text-lg">Avg %</th>
-                <th className="p-3 text-lg">Attempts</th>
+                <th className="p-3 text-lg">XP</th>
+                <th className="p-3 text-lg">Badges</th>
               </tr>
             </thead>
             <tbody>
@@ -56,8 +56,8 @@ export default function Leaderboard() {
                     {user.rank}
                   </td>
                   <td className="p-3">{user.username}</td>
-                  <td className="p-3 font-bold text-yellow-700">{user.averagePercent}%</td>
-                  <td className="p-3">{user.attempts}</td>
+                  <td className="p-3 font-bold text-yellow-700">{user.xp}</td>
+                  <td className="p-3">{(user.badges||[]).join(', ') || '-'}</td>
                 </tr>
               ))}
             </tbody>

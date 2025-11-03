@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from "r
 
 // 🔹 Pages & Components
 import Navbar from "./components/Navbar";
+import MiniBar from "./components/MiniBar";
 import Hero from "./components/Hero";
 import Features from "./components/Features";
 import HowItWorks from "./components/HowItWorks";
@@ -18,6 +19,7 @@ import AdminDashboard from "./admin/admindashboard";
 import Assignments from "./admin/assignments";
 import CreateAssignment from "./admin/createAssignment";
 import AdminTests from "./admin/tests";
+import TestResults from "./admin/test-results";
 import JoinTest from "./user/jointest";
 import Resources from "./user/Resources";
 import Analytics from "./user/Analytics";
@@ -36,6 +38,7 @@ import SolveProblem from "./pages/solve-problem";
 import CreateMCQ from "./create/mcq";
 import AITest from "./create/ai";
 import TakeTest from "./user/take-test";
+import CreateCoding from "./create/coding";
 
 // Auth
 import FormPage from "./Login2/FormPage";
@@ -50,26 +53,12 @@ const PrivateRoute = ({ children }) => {
 function AppWrapper() {
   const location = useLocation();
 
-  const hideNavbarRoutes = [
-    "/mock-tests",
-    "/create-test",
-    "/create/mcq",
-    "/create/descriptive",
-    "/create/ai",
-    "/visualizer",
-    "/login",
-    "/register",
-    "/auth/login",
-    "/auth/register",
-    "/userdashboard",
-    "/admindashboard",
-  ];
-
-  const showNavbar = !hideNavbarRoutes.includes(location.pathname);
+  const path = location.pathname;
+  const showFullNavbar = path === "/" || path === "/userdashboard" || path === "/admindashboard";
 
   return (
     <>
-      {showNavbar && <Navbar />}
+      {showFullNavbar ? <Navbar /> : <MiniBar />}
 
       <Routes>
         {/* Home */}
@@ -110,11 +99,13 @@ function AppWrapper() {
         {/* MCQ / AI */}
         <Route path="/mcq" element={<CreateMCQ />} />
         <Route path="/ai" element={<AITest />} />
+        <Route path="/create/coding" element={<CreateCoding />} />
 
         {/* Dashboards */}
         <Route path="/userdashboard" element={<PrivateRoute><UserDashboard /></PrivateRoute>} />
         <Route path="/admindashboard" element={<PrivateRoute><AdminDashboard /></PrivateRoute>} />
         <Route path="/admin/tests" element={<PrivateRoute><AdminTests /></PrivateRoute>} />
+        <Route path="/admin/tests/:id/results" element={<PrivateRoute><TestResults /></PrivateRoute>} />
         <Route path="/subscription" element={<Subscription />} />
 
         {/* Assignments */}

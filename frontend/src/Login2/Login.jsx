@@ -6,6 +6,7 @@ import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaUserCircle, FaLock } from "react-icons/fa";
 import Alert from "./alert";
+import GoogleButton from "./GoogleButton";
 
 const LoginSchema = Yup.object().shape({
   email: Yup.string().email("Invalid email").required("Email is required"),
@@ -62,6 +63,11 @@ export default function Login({ isLogin = true }) {
               ? "Log in to access your account and enjoy our services."
               : "Create your account and start exploring endless possibilities."}
           </p>
+        </div>
+
+        {/* Google */}
+        <div className="flex justify-center mb-4">
+          <GoogleButton />
         </div>
 
         {/* Form */}

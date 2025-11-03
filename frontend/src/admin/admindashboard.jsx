@@ -227,6 +227,7 @@ export default function TeacherDashboard() {
           >
             View Profile
           </motion.button>
+          
         </motion.header>
 
         {/* Stats Section */}

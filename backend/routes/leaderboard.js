@@ -38,7 +38,27 @@ router.get("/", authMiddleware, async (req, res) => {
   }
 });
 
+// XP leaderboard (gamified)
+router.get("/xp", authMiddleware, async (req, res) => {
+  try {
+    const users = await User.find({}).select("username xp badges").sort({ xp: -1 }).limit(50).lean();
+    const data = users.map((u, idx) => ({
+      rank: idx + 1,
+      userId: u._id,
+      username: u.username,
+      xp: u.xp || 0,
+      badges: u.badges || [],
+    }));
+    res.json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 export default router;
+
+
 
 
 

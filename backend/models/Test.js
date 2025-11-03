@@ -17,13 +17,30 @@ const descriptiveQuestionSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const codingQuestionSchema = new mongoose.Schema(
+  {
+    title: { type: String, required: true },
+    description: { type: String, required: true },
+    language: { type: String, enum: ["javascript", "python", "cpp", "java"], required: true },
+    starterCode: { type: String, default: "" },
+    testCases: [
+      {
+        input: { type: String, required: true },
+        output: { type: String, required: true },
+        isPublic: { type: Boolean, default: true },
+      },
+    ],
+  },
+  { _id: false }
+);
+
 const testSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     subject: { type: String, required: true },
     difficulty: { type: String, enum: ["easy", "medium", "hard", "Easy", "Medium", "Hard"], required: true },
     numberOfQuestions: { type: Number, required: true },
-    type: { type: String, enum: ["mcq", "descriptive", "ai"], required: true },
+    type: { type: String, enum: ["mcq", "descriptive", "ai", "coding"], required: true },
     questions: { type: [mongoose.Schema.Types.Mixed], default: [] },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     code: { type: String, required: true, unique: true },

@@ -15,11 +15,17 @@ const resultSchema = new mongoose.Schema({
   score: { type: Number, required: true },
   total: { type: Number, required: true },
   submittedAt: { type: Date, default: Date.now },
+  descriptiveFeedback: { type: [Object], default: undefined },
+  penalty: { type: Number, default: 0 },
+  finalScore: { type: Number, default: null },
+  proctoringLog: { type: [Object], default: undefined },
 });
 
 resultSchema.index({ testId: 1, userId: 1 });
 
 export default mongoose.model("Result", resultSchema);
+
+
 
 
 

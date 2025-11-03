@@ -2,6 +2,85 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import axios from "axios";
 
+// Proctoring imports
+import * as tf from '@tensorflow/tfjs';
+import * as blazeface from '@tensorflow-models/blazeface';
+
+const JUDGE0_LANGS = {
+  python: 71, javascript: 63, cpp: 53, java: 62,
+};
+
+function useProctoring(logResults = false) {
+  const [facePresent, setFacePresent] = useState(true);
+  const [log, setLog] = useState([]);
+  const [camDenied, setCamDenied] = useState(false);
+  const [violations, setViolations] = useState(0);
+  const [proctorOverlay, setProctorOverlay] = useState(null);
+  useEffect(() => {
+    let model, interval, stopped=false;
+    let absentSince = null;
+    async function runFaceDetection() {
+      try {
+        model = await blazeface.load();
+        const video = document.createElement('video');
+        video.autoplay = true;
+        video.width = 160;
+        video.height = 120;
+        video.playsInline = true;
+        video.style.position = 'fixed';
+        video.style.bottom = '16px';
+        video.style.right = '16px';
+        video.style.opacity = '0.7';
+        video.style.zIndex = '99999';
+        document.body.appendChild(video);
+        setProctorOverlay(video);
+        navigator.mediaDevices.getUserMedia({ video: true })
+          .then((stream) => {
+            video.srcObject = stream;
+          })
+          .catch(() => {
+            setCamDenied(true);
+            setFacePresent(false);
+            setLog(l => [...l, { ts: new Date(), type: 'error', msg: 'Camera permission denied' }]);
+          });
+        interval = setInterval(async () => {
+          if (video.readyState >= 2) {
+            const predictions = await model.estimateFaces(video, false);
+            if (predictions.length > 0) {
+              setFacePresent(true);
+              absentSince = null;
+            } else {
+              if (!absentSince) absentSince = Date.now();
+              else if (Date.now() - absentSince > 3000) {
+                setFacePresent(false);
+                setLog(l => l.length === 0 || l[l.length-1]?.type!=='face' ? [...l, { ts: new Date(), type: 'face', msg: 'Face not detected' }] : l);
+                setViolations(v => v + 1);
+              }
+            }
+          }
+        }, 1000);
+      } catch (e) { setCamDenied(true); setFacePresent(false); }
+    }
+    runFaceDetection();
+    // Tab events
+    let alerted = false;
+    const onBlur = () => {
+      setLog(l => [...l, { ts: new Date(), type: 'tab', msg: 'Tab switched/blur' }]);
+      if (!alerted) { alerted = true; window.alert('Tab switch detected! This is monitored'); }
+      setViolations(v => v + 1);
+    };
+    window.addEventListener('blur', onBlur);
+    // Cleanup
+    return () => {
+      stopped = true;
+      if (interval) clearInterval(interval);
+      if (proctorOverlay) try { proctorOverlay.remove(); } catch(_){}
+      window.removeEventListener('blur', onBlur);
+    };
+  }, []);
+  return { facePresent, camDenied, log, violations };
+}
+
 export default function TakeTest() {
   const { id } = useParams();
   const location = useLocation();
@@ -9,17 +88,18 @@ export default function TakeTest() {
   const token = localStorage.getItem("token");
 
   const [test, setTest] = useState(location.state?.test || null);
-  const [answers, setAnswers] = useState({}); // index -> answer string
+  const [userCodes, setUserCodes] = useState({}); // { [index]: { code, language } }
+  const [outputs, setOutputs] = useState({}); // result per question for 'Run' action
+  const [answers, setAnswers] = useState({}); // for mcq, etc
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
 
+  const proctor = useProctoring();
+
   useEffect(() => {
-    if (!token) {
-      navigate("/login");
-      return;
-    }
+    if (!token) { navigate("/login"); return; }
     if (test) return; // already have from state
     const fetchTest = async () => {
       try {
@@ -27,7 +107,6 @@ export default function TakeTest() {
         const res = await axios.get(`http://localhost:5000/api/tests/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        // This admin endpoint includes answers; ensure user side doesn't expose them. Ideally we'd fetch public, but we have id.
         const t = res.data;
         let safeQuestions = t.questions;
         if (t.type === "mcq" || t.type === "ai") {
@@ -36,28 +115,72 @@ export default function TakeTest() {
         setTest({ ...t, questions: safeQuestions });
       } catch (err) {
         setError(err.response?.data?.error || "Failed to load test");
-      } finally {
-        setLoading(false);
-      }
+      } finally { setLoading(false); }
     };
     fetchTest();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const total = useMemo(() => test?.questions?.length || 0, [test]);
 
-  const onSelect = (idx, value) => {
-    setAnswers(prev => ({ ...prev, [idx]: value }));
+  // MCQ/descriptive
+  const onSelect = (idx, value) => setAnswers(prev => ({ ...prev, [idx]: value }));
+
+  // Coding: run code on public test cases directly using Judge0 API
+  const runCode = async (idx) => {
+    const question = test.questions[idx];
+    const userCode = userCodes[idx]?.code || "";
+    const langKey = userCodes[idx]?.language || question.language;
+    if (!userCode || !langKey) { alert("Write code first"); return; }
+    setOutputs(prev => ({ ...prev, [idx]: { loading: true } }));
+    const testCases = question.testCases.filter(tc => tc.isPublic);
+    const resArr = [];
+    for (const tc of testCases) {
+      const resp = await fetch("https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=false&wait=true", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com",
+          "X-RapidAPI-Key": "<YOUR_JUDGE0_API_KEY>",
+        },
+        body: JSON.stringify({
+          source_code: userCode,
+          language_id: JUDGE0_LANGS[langKey],
+          stdin: tc.input,
+          expected_output: tc.output,
+        }),
+      });
+      const data = await resp.json();
+      resArr.push({
+        input: tc.input,
+        expected: tc.output,
+        output: data.stdout,
+        passed: data.status && data.status.id === 3,
+      });
+    }
+    setOutputs(prev => ({ ...prev, [idx]: { loading: false, resArr } }));
   };
 
+  const onCodingChange = (idx, field, val) => setUserCodes(prev => ({ ...prev, [idx]: { ...prev[idx], [field]: val } }));
+
+  const BOILERPLATE = {
+    python: "def solve():\n    # Write your code here\n    pass\n\nif __name__ == '__main__':\n    solve()\n",
+    javascript: "function solve(){\n  // Write your code here\n}\nsolve();\n",
+    cpp: "#include <bits/stdc++.h>\nusing namespace std;\nint main(){\n  ios::sync_with_stdio(false); cin.tie(nullptr);\n  // Write your code here\n  return 0;\n}\n",
+    java: "import java.io.*;\nimport java.util.*;\npublic class Main {\n  public static void main(String[] args) throws Exception {\n    // Write your code here\n  }\n}\n",
+  };
+
+  // Submit (coding): answers = [{index, code, language}]
   const onSubmit = async (e) => {
     e.preventDefault();
     if (!test) return;
     try {
       setSubmitting(true);
-      const payload = {
-        answers: Object.entries(answers).map(([k, v]) => ({ index: Number(k), answer: v })),
-      };
+      let payload;
+      if (test.type === "coding") {
+        payload = { answers: Object.entries(userCodes).map(([k, v]) => ({ index: Number(k), code: v.code, language: v.language })), penalty: proctor.violations, proctoringLog: proctor.log };
+      } else {
+        payload = { answers: Object.entries(answers).map(([k, v]) => ({ index: Number(k), answer: v })), penalty: proctor.violations, proctoringLog: proctor.log };
+      }
       const res = await axios.post(`http://localhost:5000/api/tests/${test._id}/submit`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -73,8 +196,103 @@ export default function TakeTest() {
   if (error) return <div className="min-h-screen flex items-center justify-center text-red-400">{error}</div>;
   if (!test) return null;
 
+  // Coding Test UI
+  if (test.type === "coding") {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white p-6 pt-20">
+        {/* Proctoring Overlay */}
+        <div className="fixed top-10 left-0 w-full px-6 z-40 flex items-center gap-4 bg-black/70 border-b border-cyan-400">
+          <span className="text-cyan-300 font-bold">AI Proctored</span>
+          {proctor.camDenied ? (
+            <span className="text-red-400">Camera access denied – required for integrity</span>
+          ) : (
+            <span className={`px-3 py-1 rounded font-bold ${proctor.facePresent? 'bg-green-800 text-green-200':'bg-red-800 text-red-200'}`}>{proctor.facePresent? 'Face Present':'No Face Found!'}</span>
+          )}
+        </div>
+        <div className="max-w-5xl mx-auto">
+          <h1 className="text-3xl font-bold mb-2">{test.name}</h1>
+          <p className="text-gray-300 mb-8">{test.subject} • {test.difficulty} • {total} coding questions</p>
+          {result ? (
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700 mt-10">
+              <h2 className="text-xl font-bold mb-3">Your Score</h2>
+              <p className="text-lg">Raw: {result.score} / {result.total}</p>
+              {typeof result.penalty === 'number' && (
+                <p className="text-lg text-yellow-300">Penalty: -{result.penalty}</p>
+              )}
+              {typeof result.finalScore === 'number' && (
+                <p className="text-lg font-semibold text-teal-300">Final: {result.finalScore} / {result.total}</p>
+              )}
+              {result.codingDetail && result.codingDetail.map((r, i) => (
+                <div key={i} className="mb-6">
+                  <div className="mb-2 font-bold">Q{r.index+1}</div>
+                  {r.results && r.results.map((tc, j) => (
+                    <div key={j} className={`mb-1 py-1 px-2 rounded ${tc.passed ? 'bg-green-800 text-green-200' : 'bg-red-900 text-red-300'}`}>
+                      <span className="font-mono">Input: {tc.input}</span>
+                      <span className="ml-4 font-mono">Expected: {tc.output}</span>
+                      <span className="ml-4 font-mono">Output: {tc.stdout || '-'}</span>
+                      <span className="ml-4">{tc.passed ? '✅ Pass' : '❌ Fail'}</span>
+                    </div>
+                  ))}
+                  <span className="text-sm">{r.passed} / {r.totalCases} cases passed</span>
+                </div>
+              ))}
+              <button className="mt-6 px-4 py-2 bg-teal-600 rounded-lg" onClick={()=>navigate("/userdashboard")}>Back to Dashboard</button>
+            </div>
+          ) : (
+            <form onSubmit={onSubmit}>
+            {test.questions.map((q, idx) => (
+              <div key={idx} className="bg-gray-800 mb-8 rounded-xl p-6 border border-gray-700">
+                <div className="font-bold text-lg mb-2">Q{idx+1}. {q.title}</div>
+                <div className="text-gray-300 mb-3 whitespace-pre-line">{q.description}</div>
+                <div className="mb-4">
+                  <label>Language:
+                    <select value={userCodes[idx]?.language||q.language} onChange={e=>onCodingChange(idx, "language", e.target.value)} className="bg-gray-700 ml-2 p-1 rounded">
+                      {Object.keys(JUDGE0_LANGS).map(l=>(<option key={l} value={l}>{l}</option>))}
+                    </select>
+                  </label>
+                </div>
+                <textarea
+                  value={userCodes[idx]?.code ?? (q.starterCode || BOILERPLATE[userCodes[idx]?.language || q.language] || "")}
+                  onChange={e=>onCodingChange(idx, "code", e.target.value)}
+                  className="w-full h-72 p-3 font-mono text-green-200 bg-black rounded mb-3"
+                  spellCheck={false}
+                />
+                <div className="mb-2 font-medium">Public Test Cases:</div>
+                <div className="space-y-2 mb-3">
+                  {q.testCases.filter(tc => tc.isPublic).map((tc,j) => (
+                    <div key={j} className="bg-gray-900 px-2 py-1 rounded"><b>Input:</b> <span className="font-mono">{tc.input}</span> <b>→ Output:</b> <span className="font-mono">{tc.output}</span></div>
+                  ))}
+                </div>
+                <button type="button" className="px-4 py-2 bg-blue-600 rounded-lg mr-2" onClick={()=>runCode(idx)} disabled={outputs[idx]?.loading}>Run Code</button>
+                {outputs[idx]?.resArr && (
+                  <div className="mt-2">
+                  <b>Result:</b>
+                    {outputs[idx].resArr.map((r, z) => (
+                      <div key={z} className={`text-sm ${r.passed ? 'text-green-300' : 'text-red-300'}`}>{r.passed ? '✅ Pass' : '❌'} Input: <span className="font-mono">{r.input}</span> → Output: <span className="font-mono">{r.output?.trim()}</span></div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+            <button type="submit" disabled={submitting} className="w-full py-3 rounded-xl text-lg font-bold bg-gradient-to-r from-cyan-500 to-blue-600 mt-6">{submitting ? "Submitting..." : "Submit Test"}</button>
+            </form>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-6">
+    <div className="min-h-screen bg-gray-900 text-white p-6 pt-20">
+      {/* Proctoring Overlay */}
+      <div className="fixed top-10 left-0 w-full px-6 z-40 flex items-center gap-4 bg-black/70 border-b border-cyan-400">
+        <span className="text-cyan-300 font-bold">AI Proctored</span>
+        {proctor.camDenied ? (
+          <span className="text-red-400">Camera access denied – required for integrity</span>
+        ) : (
+          <span className={`px-3 py-1 rounded font-bold ${proctor.facePresent? 'bg-green-800 text-green-200':'bg-red-800 text-red-200'}`}>{proctor.facePresent? 'Face Present':'No Face Found!'}</span>
+        )}
+      </div>
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold">{test.name}</h1>
         <p className="text-gray-300">{test.subject} • {test.difficulty} • {total} questions</p>
@@ -82,7 +300,13 @@ export default function TakeTest() {
         {result ? (
           <div className="mt-8 bg-gray-800 rounded-xl p-6 border border-gray-700">
             <h2 className="text-2xl font-semibold mb-2">Your Result</h2>
-            <p className="text-xl">Score: {result.score} / {result.total}</p>
+            <p className="text-lg">Raw: {result.score} / {result.total}</p>
+            {typeof result.penalty === 'number' && (
+              <p className="text-lg text-yellow-300">Penalty: -{result.penalty}</p>
+            )}
+            {typeof result.finalScore === 'number' && (
+              <p className="text-lg font-semibold text-teal-300">Final: {result.finalScore} / {result.total}</p>
+            )}
             <button className="mt-6 px-4 py-2 bg-teal-600 rounded-lg" onClick={() => navigate("/userdashboard")}>Back to Dashboard</button>
           </div>
         ) : (
@@ -120,9 +344,20 @@ export default function TakeTest() {
           </form>
         )}
       </div>
+      {/* At result, show proctor logs for review: */}
+      {result && (
+      <div className="mt-4 bg-gray-800 p-4 rounded-xl border border-gray-600">
+        <b className="text-cyan-300">Proctoring Log:</b>
+        <ul className="mt-2 text-xs text-gray-400 list-disc list-inside">
+          {proctor.log.map((entry,i)=><li key={i}>{entry.ts.toLocaleString()} &mdash; {entry.msg}</li>)}
+        </ul>
+      </div>
+      )}
     </div>
   );
 }
+
+
 
 
 
